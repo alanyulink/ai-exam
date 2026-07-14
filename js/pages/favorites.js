@@ -102,8 +102,8 @@ const WrongBookPage = {
         <div class="modal-header">
           <span class="question-type-badge">${Utils.typeLabel(q.type)}</span>
           <span class="question-number">#${q.id}</span>
+          <span class="tts-btn" onclick="WrongBookPage.speakCurrentQuestion(${questionId})" title="朗读题目">🔊</span>
           <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
-        </div>
         <div class="modal-body">
           <div class="question-content">${Utils.escapeHtml(q.content)}</div>
           <div class="options-list">
@@ -123,7 +123,10 @@ const WrongBookPage = {
           </div>
           ${q.explanation ? `
             <div class="explanation-panel correct">
-              <div class="explanation-header">📖 知识讲解</div>
+              <div class="explanation-header">
+                📖 知识讲解
+                <span class="tts-btn tts-btn-explanation" onclick="WrongBookPage.speakCurrentExplanation(${questionId})" title="朗读解析">🔊</span>
+              </div>
               <div class="explanation-body">${Utils.renderText(q.explanation)}</div>
             </div>
           ` : ''}
@@ -140,5 +143,15 @@ const WrongBookPage = {
     Store.toggleFavorite(questionId);
     document.querySelector('.modal-overlay')?.remove();
     App.renderPage('wrong');
+  },
+
+  speakCurrentQuestion(questionId) {
+    const q = QUESTION_DATA.questions.find(q => q.id === questionId);
+    if (q) TTS.speakQuestion(q);
+  },
+
+  speakCurrentExplanation(questionId) {
+    const q = QUESTION_DATA.questions.find(q => q.id === questionId);
+    if (q && q.explanation) TTS.speakExplanation(q.explanation);
   }
 };

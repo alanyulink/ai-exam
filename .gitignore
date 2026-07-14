@@ -10,3 +10,7 @@ src/data/questions.json
 
 # TRAE
 .trae/
+
+# 本地配置（含密钥）
+server.py
+start.sh

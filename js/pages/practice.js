@@ -2,8 +2,8 @@
 const PracticePage = {
   currentType: 'single',
   currentIndex: 0,
-  answered: {},     // 存储用户选择的答案
-  confirmed: {},    // 存储已提交确认的题
+  answered: {},
+  confirmed: {},
   shuffled: false,
 
   getQuestions() {
@@ -58,6 +58,7 @@ const PracticePage = {
             <span class="fav-btn ${Store.isFavorite(q.id) ? 'faved' : ''}" onclick="PracticePage.toggleFav(${q.id})">
               ${Store.isFavorite(q.id) ? '★' : '☆'}
             </span>
+            <span class="tts-btn" onclick="PracticePage.speakQuestion()" title="朗读题目">🔊</span>
           </div>
           <div class="question-content">${Utils.escapeHtml(q.content)}</div>
 
@@ -103,6 +104,7 @@ const PracticePage = {
           <div class="explanation-header">
             ${isCorrect ? '✅ 回答正确！' : '❌ 回答错误'}
             <span class="explanation-answer">正确答案：${q.answer}</span>
+            <span class="tts-btn tts-btn-explanation" onclick="PracticePage.speakExplanation()" title="朗读解析">🔊</span>
           </div>
           <div class="explanation-body">${Utils.renderText(q.explanation)}</div>
         </div>
@@ -116,12 +118,23 @@ const PracticePage = {
     this.renderCurrent();
   },
 
+  speakQuestion() {
+    const questions = this.getQuestions();
+    const q = questions[this.currentIndex];
+    if (q) TTS.speakQuestion(q);
+  },
+
+  speakExplanation() {
+    const questions = this.getQuestions();
+    const q = questions[this.currentIndex];
+    if (q && q.explanation) TTS.speakExplanation(q.explanation);
+  },
+
   selectOption(optIndex) {
     const questions = this.getQuestions();
     const q = questions[this.currentIndex];
     const isMulti = q.type === 'multi';
 
-    // 如果已提交，先解除提交状态，允许修改
     if (this.confirmed[this.currentIndex]) {
       this.confirmed[this.currentIndex] = false;
     }
@@ -143,12 +156,10 @@ const PracticePage = {
 
     this.answered[this.currentIndex] = newAnswer;
 
-    // 单选或判断，选完立即提交
     if (!isMulti) {
       this.confirmed[this.currentIndex] = true;
       this.checkAnswer();
     }
-    // 多选需要用户手动点"确认提交"
     this.renderCurrent();
   },
 
@@ -168,7 +179,6 @@ const PracticePage = {
     const userAnswer = this.answered[this.currentIndex] || '';
     const isCorrect = userAnswer === q.answer;
 
-    // 更新统计和错题本
     const stats = Store.getStats();
     const today = new Date().toDateString();
 
@@ -187,6 +197,9 @@ const PracticePage = {
     }
 
     this.renderCurrent();
+
+    // 语音反馈
+    TTS.speakFeedback(isCorrect, q.type, q.answer, q.content);
   },
 
   goTo(index) {
