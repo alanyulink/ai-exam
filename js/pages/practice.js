@@ -4,7 +4,6 @@ const PracticePage = {
   currentIndex: 0,
   answered: {},
   confirmed: {},
-  shuffled: false,
 
   getQuestions() {
     return QUESTION_DATA.questions.filter(q => q.type === this.currentType);
@@ -16,6 +15,7 @@ const PracticePage = {
     this.answered = {};
     this.confirmed = {};
 
+    setTimeout(() => this.autoPlayCurrent(), 200);
     return this.renderPage();
   },
 
@@ -58,7 +58,7 @@ const PracticePage = {
             <span class="fav-btn ${Store.isFavorite(q.id) ? 'faved' : ''}" onclick="PracticePage.toggleFav(${q.id})">
               ${Store.isFavorite(q.id) ? '★' : '☆'}
             </span>
-            <span class="tts-btn" onclick="PracticePage.speakQuestion()" title="朗读题目">🔊</span>
+            <span class="tts-btn ${TTS._isPlaying ? 'playing' : ''}" onclick="PracticePage.toggleSpeak()" title="朗读/停止题目">🔊</span>
           </div>
           <div class="question-content">${Utils.escapeHtml(q.content)}</div>
 
@@ -118,10 +118,26 @@ const PracticePage = {
     this.renderCurrent();
   },
 
-  speakQuestion() {
-    const questions = this.getQuestions();
-    const q = questions[this.currentIndex];
-    if (q) TTS.speakQuestion(q);
+  toggleSpeak() {
+    if (TTS.isPlaying()) {
+      TTS.stop();
+      this.updateTtsButton(false);
+    } else {
+      const questions = this.getQuestions();
+      const q = questions[this.currentIndex];
+      if (!q) return;
+      this.updateTtsButton(true);
+      TTS.speakQuestion(q).finally(() => {
+        this.updateTtsButton(false);
+      });
+    }
+  },
+
+  updateTtsButton(playing) {
+    const btn = document.querySelector('.tts-btn');
+    if (btn) {
+      btn.classList.toggle('playing', playing);
+    }
   },
 
   speakExplanation() {
@@ -198,11 +214,11 @@ const PracticePage = {
 
     this.renderCurrent();
 
-    // 语音反馈
-    TTS.speakFeedback(isCorrect, q.type, q.answer, q.content);
+    TTS.speakFeedback(isCorrect, q.type, q.answer);
   },
 
   goTo(index) {
+    TTS.stop();
     const questions = this.getQuestions();
     if (index < 0 || index >= questions.length) return;
     this.currentIndex = index;
@@ -211,5 +227,17 @@ const PracticePage = {
 
   renderCurrent() {
     document.getElementById('app').innerHTML = this.renderPage();
+    setTimeout(() => this.autoPlayCurrent(), 100);
+  },
+
+  autoPlayCurrent() {
+    if (TTS.isPlaying()) return;
+    const questions = this.getQuestions();
+    const q = questions[this.currentIndex];
+    if (!q) return;
+    this.updateTtsButton(true);
+    TTS.speakQuestion(q).finally(() => {
+      this.updateTtsButton(false);
+    });
   }
 };
