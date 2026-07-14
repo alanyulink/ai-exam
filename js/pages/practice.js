@@ -17,6 +17,7 @@ const PracticePage = {
     this.confirmed = {};
     this.gridExpanded = false;
 
+    setTimeout(() => this.autoPlayCurrent(), 200);
     return this.renderPage();
   },
 
@@ -250,5 +251,17 @@ const PracticePage = {
 
   renderCurrent() {
     document.getElementById('app').innerHTML = this.renderPage();
+    setTimeout(() => this.autoPlayCurrent(), 100);
+  },
+
+  autoPlayCurrent() {
+    if (TTS.isPlaying()) return;
+    const questions = this.getQuestions();
+    const q = questions[this.currentIndex];
+    if (!q) return;
+    this.updateTtsButton(true);
+    TTS.speakQuestion(q).finally(() => {
+      this.updateTtsButton(false);
+    });
   }
 };
