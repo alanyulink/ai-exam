@@ -2,8 +2,6 @@
 const HomePage = {
   render() {
     const stats = Store.getStats();
-    const favIds = Store.getFavorites();
-    const favCount = favIds.length;
     const examRecords = Store.getExamRecords();
     const recentExams = examRecords.slice(0, 3);
 
@@ -52,13 +50,6 @@ const HomePage = {
               <span class="stat-label">总答题</span>
             </div>
           </div>
-          <div class="stat-card stat-card-wrong">
-            <div class="stat-icon">⭐</div>
-            <div class="stat-body">
-              <span class="stat-value">${favCount}</span>
-              <span class="stat-label">已收藏</span>
-            </div>
-          </div>
         </div>
 
         <div class="action-grid">
@@ -71,12 +62,6 @@ const HomePage = {
             <span class="action-icon">📋</span>
             <span class="action-title">模拟考试</span>
             <span class="action-desc">5套模拟卷，限时60分钟</span>
-          </button>
-          <button class="action-btn action-btn-wrong" onclick="Utils.navigate('wrong')">
-            <span class="action-icon">📕</span>
-            <span class="action-title">难题收藏</span>
-            <span class="action-desc">针对性复习薄弱环节</span>
-            ${favCount > 0 ? `<span class="action-badge">${favCount}</span>` : ''}
           </button>
         </div>
 

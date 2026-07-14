@@ -4,6 +4,7 @@ const PracticePage = {
   currentIndex: 0,
   answered: {},
   confirmed: {},
+  gridExpanded: false,
 
   getQuestions() {
     return QUESTION_DATA.questions.filter(q => q.type === this.currentType);
@@ -14,6 +15,7 @@ const PracticePage = {
     this.currentIndex = 0;
     this.answered = {};
     this.confirmed = {};
+    this.gridExpanded = false;
 
     setTimeout(() => this.autoPlayCurrent(), 200);
     return this.renderPage();
@@ -44,12 +46,36 @@ const PracticePage = {
           </div>
         </div>
 
-        <div class="progress-bar-container">
-          <div class="progress-bar">
-            <div class="progress-fill" style="width:${progress}%"></div>
+        <div class="question-grid-header" onclick="PracticePage.toggleGrid()">
+          <div class="grid-header-bar">
+            <div class="grid-progress-fill" style="width:${progress}%"></div>
           </div>
-          <span class="progress-text">${this.currentIndex + 1}/${total}</span>
+          <div class="grid-header-info">
+            <span>${this.currentIndex + 1}/${total}</span>
+            <span class="grid-header-badges">
+              <span class="grid-badge fav-badge">★ ${Store.getFavorites().filter(id => questions.some(qx => qx.id === id)).length}</span>
+            </span>
+            <span class="grid-toggle-btn">${this.gridExpanded ? '▲' : '▼'}</span>
+          </div>
         </div>
+
+        ${this.gridExpanded ? `
+        <div class="question-grid expanded">
+          ${questions.map((qx, i) => {
+            const isFav = Store.isFavorite(qx.id);
+            const isAnswered = this.confirmed[i] === true;
+            const isCurrent = i === this.currentIndex;
+            let dotClass = 'grid-dot';
+            if (isCurrent) dotClass += ' current';
+            else if (isAnswered) {
+              const ansCorrect = this.answered[i] === qx.answer;
+              dotClass += ansCorrect ? ' correct' : ' wrong';
+            }
+            if (isFav) dotClass += ' fav';
+            return `<span class="${dotClass}" onclick="PracticePage.goTo(${i})">${i + 1}</span>`;
+          }).join('')}
+        </div>
+        ` : ''}
 
         <div class="question-card">
           <div class="question-header">
@@ -111,6 +137,11 @@ const PracticePage = {
         ` : ''}
       </div>
     `;
+  },
+
+  toggleGrid() {
+    this.gridExpanded = !this.gridExpanded;
+    this.renderCurrent();
   },
 
   toggleFav(questionId) {

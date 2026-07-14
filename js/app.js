@@ -30,8 +30,6 @@ const App = {
       } else if (parts.length === 3 && parts[2] === 'result') {
         app.innerHTML = ExamResultPage.render(parts[1]);
       }
-    } else if (parts[0] === 'wrong') {
-      app.innerHTML = WrongBookPage.render();
     } else {
       app.innerHTML = HomePage.render();
     }
