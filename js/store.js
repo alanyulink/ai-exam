@@ -31,7 +31,6 @@ const Store = {
     const stats = this.getStats();
     const today = new Date().toDateString();
 
-    // 检查连续学习天数
     if (updates.todayAnswered > 0) {
       if (stats.lastStudyDate !== today) {
         const yesterday = new Date(Date.now() - 86400000).toDateString();
@@ -55,7 +54,7 @@ const Store = {
     return stats;
   },
 
-  // 错题本
+  // 错题本（废弃，保留兼容）
   getWrongQuestions() {
     return this.get('wrongQuestions', {});
   },
@@ -64,11 +63,7 @@ const Store = {
     if (isCorrect) return;
     const wrong = this.getWrongQuestions();
     if (!wrong[questionId]) {
-      wrong[questionId] = {
-        questionId,
-        wrongCount: 0,
-        lastWrongTime: Date.now()
-      };
+      wrong[questionId] = { questionId, wrongCount: 0, lastWrongTime: Date.now() };
     }
     wrong[questionId].wrongCount += 1;
     wrong[questionId].lastWrongTime = Date.now();
@@ -85,7 +80,7 @@ const Store = {
     this.set('wrongQuestions', {});
   },
 
-  // 收藏（手动收藏/取消收藏）
+  // 收藏
   getFavorites() {
     return this.get('favorites', []);
   },
@@ -96,11 +91,11 @@ const Store = {
     if (idx !== -1) {
       favs.splice(idx, 1);
       this.set('favorites', favs);
-      return false; // 已取消收藏
+      return false;
     } else {
       favs.push(questionId);
       this.set('favorites', favs);
-      return true; // 已收藏
+      return true;
     }
   },
 
@@ -110,6 +105,24 @@ const Store = {
 
   clearFavorites() {
     this.set('favorites', []);
+  },
+
+  // 考试草稿（保存进度）
+  getExamDraft(examId) {
+    const drafts = this.get('examDrafts', {});
+    return drafts[examId] || null;
+  },
+
+  saveExamDraft(examId, draft) {
+    const drafts = this.get('examDrafts', {});
+    drafts[examId] = draft;
+    this.set('examDrafts', drafts);
+  },
+
+  removeExamDraft(examId) {
+    const drafts = this.get('examDrafts', {});
+    delete drafts[examId];
+    this.set('examDrafts', drafts);
   },
 
   // 考试记录

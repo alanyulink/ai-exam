@@ -15,14 +15,22 @@ const ExamRoomPage = {
       return `<div class="page"><div class="empty-state">试卷不存在</div></div>`;
     }
 
-    this.currentIndex = 0;
-    this.answers = {};
-    this.timeLeft = this.exam.time_limit || 3600;
+    if (this.timer) clearInterval(this.timer);
+
+    // 检查是否有草稿
+    const draft = Store.getExamDraft(this.examId);
+    if (draft) {
+      this.answers = draft.answers || {};
+      this.currentIndex = draft.currentIndex || 0;
+      this.timeLeft = draft.timeLeft !== undefined ? draft.timeLeft : (this.exam.time_limit || 3600);
+    } else {
+      this.answers = {};
+      this.currentIndex = 0;
+      this.timeLeft = this.exam.time_limit || 3600;
+    }
     this.ended = false;
 
-    if (this.timer) clearInterval(this.timer);
     this.startTimer();
-
     return this.renderQuestion();
   },
 
@@ -31,7 +39,7 @@ const ExamRoomPage = {
       this.timeLeft -= 1;
       if (this.timeLeft <= 0) {
         this.timeLeft = 0;
-        this.submitExam();
+        this.doSubmit();
       }
       const timerEl = document.getElementById('exam-timer');
       if (timerEl) {
@@ -49,8 +57,9 @@ const ExamRoomPage = {
     const q = questions[this.currentIndex];
     if (!q) return `<div class="page"><div class="empty-state">题目加载失败</div></div>`;
 
-    const isAnswered = this.answers[this.currentIndex] !== undefined;
     const userAnswer = this.answers[this.currentIndex] || '';
+    const draft = Store.getExamDraft(this.examId);
+    const hasDraft = draft !== null;
 
     return `
       <div class="page exam-room-page">
@@ -59,6 +68,7 @@ const ExamRoomPage = {
           <div class="exam-room-title">${this.exam.name}</div>
           <div class="exam-room-timer" id="exam-timer">${Utils.formatTime(this.timeLeft)}</div>
         </div>
+        ${hasDraft ? '<div class="draft-banner">📝 上次未完成的考试，已恢复进度</div>' : ''}
 
         <div class="progress-bar-container">
           <div class="progress-bar">
@@ -109,7 +119,10 @@ const ExamRoomPage = {
 
         <div class="exam-room-footer">
           <span class="answered-count">已答 ${Object.keys(this.answers).length}/${total} 题</span>
-          <button class="submit-exam-btn" onclick="ExamRoomPage.confirmSubmit()">交卷</button>
+          <div class="exam-room-actions">
+            <button class="save-exam-btn" onclick="ExamRoomPage.saveDraft()">💾 仅保存</button>
+            <button class="submit-exam-btn" onclick="ExamRoomPage.confirmSubmit()">交卷</button>
+          </div>
         </div>
       </div>
     `;
@@ -143,14 +156,26 @@ const ExamRoomPage = {
     this.renderCurrent();
   },
 
+  saveDraft() {
+    Store.saveExamDraft(this.examId, {
+      answers: this.answers,
+      currentIndex: this.currentIndex,
+      timeLeft: this.timeLeft
+    });
+    if (this.timer) clearInterval(this.timer);
+    Utils.navigate('exam');
+  },
+
   confirmExit() {
     if (Object.keys(this.answers).length > 0) {
       if (confirm('确定要退出考试吗？答题进度将丢失。')) {
         if (this.timer) clearInterval(this.timer);
+        Store.removeExamDraft(this.examId);
         Utils.navigate('exam');
       }
     } else {
       if (this.timer) clearInterval(this.timer);
+      Store.removeExamDraft(this.examId);
       Utils.navigate('exam');
     }
   },
@@ -163,35 +188,64 @@ const ExamRoomPage = {
     if (unanswered > 0) msg += `，还有 ${unanswered} 题未答`;
     msg += '，确定要交卷吗？';
     if (confirm(msg)) {
-      this.submitExam();
+      this.doSubmit();
     }
   },
 
-  submitExam() {
+  doSubmit() {
     this.ended = true;
     if (this.timer) clearInterval(this.timer);
+    Store.removeExamDraft(this.examId);
 
-    // 计算得分
     const questions = this.exam.questions;
     let correct = 0;
-    const details = questions.map((q, i) => {
+    const wrongDetails = [];
+
+    const singleStats = { correct: 0, total: 0 };
+    const multiStats = { correct: 0, total: 0 };
+    const judgeStats = { correct: 0, total: 0 };
+
+    questions.forEach((q, i) => {
       const userAnswer = this.answers[i] || '';
       const isCorrect = userAnswer === q.answer;
       if (isCorrect) correct++;
-      return { index: i, userAnswer, isCorrect };
+
+      const stats = q.type === 'single' ? singleStats : q.type === 'multi' ? multiStats : judgeStats;
+      stats.total++;
+      if (isCorrect) stats.correct++;
+
+      if (!isCorrect) {
+        wrongDetails.push({
+          index: i,
+          type: q.type,
+          content: q.content,
+          options: q.options,
+          userAnswer: userAnswer,
+          correctAnswer: q.answer,
+          explanation: q.explanation
+        });
+      }
     });
 
     const score = correct * this.exam.per_score;
     const passed = score >= this.exam.pass_score;
 
-    // 记录考试
+    // 保存详细记录
     Store.addExamRecord({
       examId: this.examId,
       score,
       totalScore: this.exam.total_score,
-      answers: this.answers,
+      passScore: this.exam.pass_score,
+      passed,
+      timestamp: Date.now(),
       timeSpent: (this.exam.time_limit || 3600) - this.timeLeft,
-      timestamp: Date.now()
+      singleCorrect: singleStats.correct,
+      singleTotal: singleStats.total,
+      multiCorrect: multiStats.correct,
+      multiTotal: multiStats.total,
+      judgeCorrect: judgeStats.correct,
+      judgeTotal: judgeStats.total,
+      wrongDetails: wrongDetails.slice(0, 60)
     });
 
     // 更新统计
@@ -202,28 +256,8 @@ const ExamRoomPage = {
       passedExams: passed ? 1 : 0
     });
 
-    // 记录错题
-    details.forEach(d => {
-      if (!d.isCorrect) {
-        Store.addWrongQuestion(questions[d.index].id, d.userAnswer, false);
-      }
-    });
-
-    // 跳转到成绩页
-    const state = encodeURIComponent(JSON.stringify({
-      examId: this.examId,
-      score,
-      totalScore: this.exam.total_score,
-      passScore: this.exam.pass_score,
-      correct,
-      total: questions.length,
-      perScore: this.exam.per_score,
-      timeSpent: (this.exam.time_limit || 3600) - this.timeLeft,
-      timeLimit: this.exam.time_limit,
-      details,
-      passed
-    }));
-    window.location.hash = `exam/${this.examId}/result?state=${state}`;
+    // 返回试卷列表
+    Utils.navigate('exam');
   },
 
   renderCurrent() {
