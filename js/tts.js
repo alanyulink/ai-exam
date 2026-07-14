@@ -1,98 +1,61 @@
-// 语音合成服务
+// 语音合成服务 - 纯浏览器端，不需要服务器
 const TTS = {
-  _audio: null,
+  _voice: null,
   _isPlaying: false,
-  _useWebSpeech: false,
-  _checkedServer: false,
-  _onDone: null,
 
-  async _checkServer() {
-    if (this._checkedServer) return;
-    this._checkedServer = true;
-    try {
-      const resp = await fetch('/api/ping');
-      if (resp.ok) {
-        this._useWebSpeech = false;
-      } else {
-        throw new Error('server error');
-      }
-    } catch {
-      this._useWebSpeech = true;
+  _getVoice() {
+    if (this._voice) return this._voice;
+    const voices = window.speechSynthesis.getVoices();
+    // 按优先顺序找中文女声
+    const preferred = [
+      'Ting-Ting',       // macOS 高品质中文女声
+      'Mei-Jia',         // macOS 中文女声
+      'Microsoft Yaoyao',// Edge 中文女声
+      'Microsoft Xiaoxiao', // Edge 中文女声
+      'Microsoft Kangkang', // Edge 中文男声
+      'Google 普通话',   // Chrome 中文
+      'zh-CN'            // 默认中文
+    ];
+    for (const name of preferred) {
+      const found = voices.find(v => v.name.includes(name) || v.name === name);
+      if (found) { this._voice = found; return found; }
     }
+    this._voice = voices.find(v => v.lang.startsWith('zh')) || voices[0] || null;
+    return this._voice;
   },
 
   stop() {
-    if (this._audio) {
-      this._audio.pause();
-      this._audio.currentTime = 0;
-      this._audio = null;
-    }
     if (window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
     this._isPlaying = false;
-    if (this._onDone) {
-      this._onDone();
-      this._onDone = null;
-    }
   },
 
   isPlaying() {
-    if (this._audio && !this._audio.paused) return true;
     if (window.speechSynthesis && window.speechSynthesis.speaking) return true;
     return false;
   },
 
-  _speakAliyun(text) {
-    return new Promise((resolve, reject) => {
-      const url = `/api/tts?text=${encodeURIComponent(text)}`;
-      this._audio = new Audio(url);
-      this._audio.onended = () => {
-        this._audio = null;
-        this._isPlaying = false;
-        resolve();
-      };
-      this._audio.onerror = (e) => {
-        this._audio = null;
-        this._isPlaying = false;
-        reject(e);
-      };
-      this._audio.play().then(() => {
-        this._isPlaying = true;
-      }).catch(reject);
-    });
-  },
+  speak(text) {
+    if (!text || !text.trim()) return Promise.resolve();
+    this.stop();
 
-  _speakWebSpeech(text) {
     return new Promise((resolve) => {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'zh-CN';
-      utterance.rate = 1.0;
+      utterance.rate = 0.95;
       utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+
+      const voice = this._getVoice();
+      if (voice) utterance.voice = voice;
+
       utterance.onstart = () => { this._isPlaying = true; };
       utterance.onend = () => { this._isPlaying = false; resolve(); };
       utterance.onerror = () => { this._isPlaying = false; resolve(); };
+
       window.speechSynthesis.speak(utterance);
     });
-  },
-
-  async speak(text) {
-    if (!text || !text.trim()) return;
-    this.stop();
-    await this._checkServer();
-
-    try {
-      if (this._useWebSpeech) {
-        await this._speakWebSpeech(text);
-      } else {
-        await this._speakAliyun(text);
-      }
-    } catch (e) {
-      try {
-        await this._speakWebSpeech(text);
-      } catch (e2) {
-      }
-    }
   },
 
   speakQuestion(q) {
@@ -107,15 +70,25 @@ const TTS = {
     return this.speak(text);
   },
 
-  speakFeedback(isCorrect, type, answer) {
+  speakFeedback(isCorrect, type, answer, options) {
     if (isCorrect) {
       if (type === 'multi') {
         return this.speak('回答正确');
       } else {
-        return this.speak(`回答正确。正确答案是${answer}`);
+        const label = answer;
+        const opt = options ? options.find(o => o.label === label) : null;
+        const content = opt ? opt.content : '';
+        const text = content ? `回答正确。正确答案是${label} ${content}` : `回答正确。正确答案是${label}`;
+        return this.speak(text);
       }
     } else {
       return this.speak('回答错误');
     }
   }
 };
+
+// 预加载语音列表
+if (window.speechSynthesis) {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = () => { TTS._voice = null; };
+}
