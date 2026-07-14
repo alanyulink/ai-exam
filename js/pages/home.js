@@ -10,10 +10,6 @@ const HomePage = {
     const multiCount = QUESTION_DATA.questions.filter(q => q.type === 'multi').length;
     const judgeCount = QUESTION_DATA.questions.filter(q => q.type === 'judge').length;
 
-    const accuracy = stats.totalAnswered > 0
-      ? Math.round((stats.totalCorrect / stats.totalAnswered) * 100)
-      : 0;
-
     return `
       <div class="page home-page">
         <header class="home-header">
@@ -36,13 +32,7 @@ const HomePage = {
               <span class="stat-label">今日答题</span>
             </div>
           </div>
-          <div class="stat-card stat-card-accuracy">
-            <div class="stat-icon">🎯</div>
-            <div class="stat-body">
-              <span class="stat-value">${accuracy}%</span>
-              <span class="stat-label">正确率</span>
-            </div>
-          </div>
+
           <div class="stat-card stat-card-total">
             <div class="stat-icon">📚</div>
             <div class="stat-body">
