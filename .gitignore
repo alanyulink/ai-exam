@@ -11,5 +11,8 @@ src/data/questions.json
 # TRAE
 .trae/
 
-# 本地环境变量（含密钥）
+# 本地环境变量
 start.sh
+
+# 本地语音配置
+js/config.js

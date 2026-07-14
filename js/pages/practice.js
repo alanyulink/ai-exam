@@ -17,7 +17,6 @@ const PracticePage = {
     this.confirmed = {};
     this.gridExpanded = false;
 
-    setTimeout(() => this.autoPlayCurrent(), 200);
     return this.renderPage();
   },
 
@@ -130,7 +129,6 @@ const PracticePage = {
           <div class="explanation-header">
             ${isCorrect ? '✅ 回答正确！' : '❌ 回答错误'}
             <span class="explanation-answer">正确答案：${q.answer}</span>
-            <span class="tts-btn tts-btn-explanation" onclick="PracticePage.speakExplanation()" title="朗读解析">🔊</span>
           </div>
           <div class="explanation-body">${Utils.renderText(q.explanation)}</div>
         </div>
@@ -169,12 +167,6 @@ const PracticePage = {
     if (btn) {
       btn.classList.toggle('playing', playing);
     }
-  },
-
-  speakExplanation() {
-    const questions = this.getQuestions();
-    const q = questions[this.currentIndex];
-    if (q && q.explanation) TTS.speakExplanation(q.explanation);
   },
 
   selectOption(optIndex) {
@@ -245,7 +237,7 @@ const PracticePage = {
 
     this.renderCurrent();
 
-    TTS.speakFeedback(isCorrect, q.type, q.answer);
+    TTS.speakFeedback(isCorrect, q.type, q.answer, q.options);
   },
 
   goTo(index) {
@@ -258,17 +250,5 @@ const PracticePage = {
 
   renderCurrent() {
     document.getElementById('app').innerHTML = this.renderPage();
-    setTimeout(() => this.autoPlayCurrent(), 100);
-  },
-
-  autoPlayCurrent() {
-    if (TTS.isPlaying()) return;
-    const questions = this.getQuestions();
-    const q = questions[this.currentIndex];
-    if (!q) return;
-    this.updateTtsButton(true);
-    TTS.speakQuestion(q).finally(() => {
-      this.updateTtsButton(false);
-    });
   }
 };
