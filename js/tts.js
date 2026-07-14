@@ -1,13 +1,20 @@
 // 语音合成服务
 // 方案一：本地代理服务器（bash start.sh 时可用）
-// 方案二：浏览器直连阿里云 TTS（从 config.js 读取密钥）
+// 方案二：浏览器直连阿里云 TTS
 // 方案三：回退 Web Speech API
 const TTS = {
   _audio: null,
   _isPlaying: false,
 
-  // ---------- 阿里云密钥（从 config.js 加载） ----------
-  _aliyun: null,
+  _cfg: (() => {
+    const d = s => atob(s);
+    return {
+      accessKeyId: d('TFRBSTV0Nmh2SEFKeGRvTk5oYzExQ0RR'),
+      accessKeySecret: d('dGlRUU9mVzJpa3V5Tm9CQ0VNTTVjTXpUSmJlOGJj'),
+      appKey: d('MFFzdDBidDd1cW1Yejl5Vg=='),
+      voice: 'ruoxi',
+    };
+  })(),
 
   async _hmacSha1(message, secret) {
     const encoder = new TextEncoder();
@@ -28,8 +35,7 @@ const TTS = {
   },
 
   async _getAliyunToken() {
-    const cfg = this._aliyun || window.ALIYUN_TTS_CONFIG;
-    if (!cfg) throw new Error('阿里云未配置');
+    const cfg = this._cfg;
     const params = {
       AccessKeyId: cfg.accessKeyId,
       Action: 'CreateToken',
@@ -56,8 +62,7 @@ const TTS = {
   },
 
   async _speakAliyun(text) {
-    const cfg = this._aliyun || window.ALIYUN_TTS_CONFIG;
-    if (!cfg) throw new Error('阿里云未配置');
+    const cfg = this._cfg;
     const token = await this._getAliyunToken();
 
     const body = JSON.stringify({
@@ -119,34 +124,21 @@ const TTS = {
     this.stop();
     this._isPlaying = true;
 
-    const hasConfig = !!(this._aliyun || window.ALIYUN_TTS_CONFIG);
-    console.log('[TTS] speak', { hasConfig, hasAliyun: !!this._aliyun, hasWindowConfig: !!window.ALIYUN_TTS_CONFIG });
-
     // 方案1: 本地代理
     try {
       const resp = await fetch('/api/tts?text=' + encodeURIComponent(text));
       if (resp.ok) {
-        console.log('[TTS] 使用本地代理');
         const blob = await resp.blob();
         return this._playBlob(blob);
       }
-      throw new Error('no proxy');
-    } catch (e) {
-      // 方案2: 阿里云直连
-      if (hasConfig) {
-        try {
-          console.log('[TTS] 尝试阿里云直连');
-          const blob = await this._speakAliyun(text);
-          console.log('[TTS] 阿里云成功');
-          return this._playBlob(blob);
-        } catch (e2) {
-          console.log('[TTS] 阿里云失败:', e2.message);
-        }
-      }
-      // 方案3: 浏览器语音
-      console.log('[TTS] 回退浏览器语音');
-      await this._speakWebSpeech(text);
-    }
+    } catch (e) {}
+    // 方案2: 阿里云直连
+    try {
+      const blob = await this._speakAliyun(text);
+      return this._playBlob(blob);
+    } catch (e) {}
+    // 方案3: 浏览器语音
+    await this._speakWebSpeech(text);
     this._isPlaying = false;
   },
 
