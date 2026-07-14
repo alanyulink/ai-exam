@@ -7,6 +7,11 @@ const HomePage = {
     const examRecords = Store.getExamRecords();
     const recentExams = examRecords.slice(0, 3);
 
+    // 从题库数据动态计算
+    const singleCount = QUESTION_DATA.questions.filter(q => q.type === 'single').length;
+    const multiCount = QUESTION_DATA.questions.filter(q => q.type === 'multi').length;
+    const judgeCount = QUESTION_DATA.questions.filter(q => q.type === 'judge').length;
+
     const accuracy = stats.totalAnswered > 0
       ? Math.round((stats.totalCorrect / stats.totalAnswered) * 100)
       : 0;
@@ -105,21 +110,21 @@ const HomePage = {
             <div class="overview-item" onclick="Utils.navigate('practice/single')">
               <span class="overview-icon">🔵</span>
               <span class="overview-info">
-                <span class="overview-num">199</span>
+                <span class="overview-num">${singleCount}</span>
                 <span class="overview-label">单选题</span>
               </span>
             </div>
             <div class="overview-item" onclick="Utils.navigate('practice/multi')">
               <span class="overview-icon">🟢</span>
               <span class="overview-info">
-                <span class="overview-num">47</span>
+                <span class="overview-num">${multiCount}</span>
                 <span class="overview-label">多选题</span>
               </span>
             </div>
             <div class="overview-item" onclick="Utils.navigate('practice/judge')">
               <span class="overview-icon">🟠</span>
               <span class="overview-info">
-                <span class="overview-num">50</span>
+                <span class="overview-num">${judgeCount}</span>
                 <span class="overview-label">判断题</span>
               </span>
             </div>
