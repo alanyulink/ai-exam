@@ -119,23 +119,33 @@ const TTS = {
     this.stop();
     this._isPlaying = true;
 
+    const hasConfig = !!(this._aliyun || window.ALIYUN_TTS_CONFIG);
+    console.log('[TTS] speak', { hasConfig, hasAliyun: !!this._aliyun, hasWindowConfig: !!window.ALIYUN_TTS_CONFIG });
+
     // 方案1: 本地代理
     try {
       const resp = await fetch('/api/tts?text=' + encodeURIComponent(text));
       if (resp.ok) {
+        console.log('[TTS] 使用本地代理');
         const blob = await resp.blob();
         return this._playBlob(blob);
       }
       throw new Error('no proxy');
     } catch (e) {
       // 方案2: 阿里云直连
-      try {
-        const blob = await this._speakAliyun(text);
-        return this._playBlob(blob);
-      } catch (e2) {
-        // 方案3: 浏览器语音
-        await this._speakWebSpeech(text);
+      if (hasConfig) {
+        try {
+          console.log('[TTS] 尝试阿里云直连');
+          const blob = await this._speakAliyun(text);
+          console.log('[TTS] 阿里云成功');
+          return this._playBlob(blob);
+        } catch (e2) {
+          console.log('[TTS] 阿里云失败:', e2.message);
+        }
       }
+      // 方案3: 浏览器语音
+      console.log('[TTS] 回退浏览器语音');
+      await this._speakWebSpeech(text);
     }
     this._isPlaying = false;
   },
