@@ -131,7 +131,7 @@ const PracticePage = {
             ${isCorrect ? '✅ 回答正确！' : '❌ 回答错误'}
             <span class="explanation-answer">正确答案：${q.answer}</span>
           </div>
-          <div class="explanation-body">${Utils.renderText(q.explanation)}</div>
+          ${!q.explanationHidden ? `<div class="explanation-body">${Utils.renderText(q.explanation)}</div>` : ''}
         </div>
         ` : ''}
       </div>

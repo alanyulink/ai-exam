@@ -155,7 +155,7 @@ const ExamResultPage = {
             <span>你的答案：${userAnswer}</span>
             <span>正确答案：${q.answer}</span>
           </div>
-          ${q.explanation ? `
+          ${q.explanation && !q.explanationHidden ? `
             <div class="explanation-panel correct">
               <div class="explanation-header">📖 知识讲解</div>
               <div class="explanation-body">${Utils.renderText(q.explanation)}</div>
