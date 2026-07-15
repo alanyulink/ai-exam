@@ -22,6 +22,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: 生成阿里云 TTS Token
+        env:
+          ALIYUN_ACCESS_KEY_ID: ${{ secrets.ALIYUN_ACCESS_KEY_ID }}
+          ALIYUN_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_ACCESS_KEY_SECRET }}
+          ALIYUN_APP_KEY: ${{ secrets.ALIYUN_APP_KEY }}
+          ALIYUN_TTS_VOICE: ruoxi
+        run: python3 build/gen_token.py
+
       - name: 上传 Pages 产物
         uses: actions/upload-pages-artifact@v3
         with:
