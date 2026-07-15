@@ -7,6 +7,33 @@ const ExamRoomPage = {
   timeLeft: 0,
   timer: null,
   ended: false,
+  _poolIndex: null,
+
+  _buildPoolIndex() {
+    // 按题型分组，给题库每道题算组内序号（1-based）
+    const groups = {};
+    for (const q of QUESTION_DATA.questions) {
+      const t = q.type;
+      if (!groups[t]) groups[t] = [];
+      groups[t].push(q);
+    }
+    const map = {};
+    for (const [type, list] of Object.entries(groups)) {
+      list.sort((a, b) => a.id - b.id);
+      list.forEach((q, i) => {
+        map[q.id] = { type, poolIndex: i + 1 };
+      });
+    }
+    this._poolIndex = map;
+  },
+
+  _getPoolLabel(q) {
+    const info = this._poolIndex[q.id];
+    if (!info) return '';
+    const labelMap = { single: '单选', multi: '多选', judge: '判断' };
+    const typeLabel = labelMap[info.type] || info.type;
+    return `【${typeLabel}-${info.poolIndex}】`;
+  },
 
   render(id) {
     this.examId = parseInt(id);
@@ -16,6 +43,7 @@ const ExamRoomPage = {
     }
 
     if (this.timer) clearInterval(this.timer);
+    if (!this._poolIndex) this._buildPoolIndex();
 
     // 检查是否有草稿
     const draft = Store.getExamDraft(this.examId);
@@ -81,7 +109,7 @@ const ExamRoomPage = {
           <div class="question-header">
             <span class="question-type-badge">${Utils.typeLabel(q.type)}</span>
             <span class="question-number">第 ${this.currentIndex + 1} 题</span>
-            <span class="question-pool-id">${this.exam.name} · 题库#${q.id}</span>
+            <span class="question-pool-id">${this._getPoolLabel(q)}</span>
           </div>
           <div class="question-content">${Utils.escapeHtml(q.content)}</div>
 
