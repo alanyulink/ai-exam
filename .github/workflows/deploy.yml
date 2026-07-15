@@ -22,48 +22,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 生成阿里云 TTS Token 并注入 tts.js
+      - name: 生成阿里云 TTS Token
         env:
           ALIYUN_ACCESS_KEY_ID: ${{ secrets.ALIYUN_ACCESS_KEY_ID }}
           ALIYUN_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_ACCESS_KEY_SECRET }}
           ALIYUN_APP_KEY: ${{ secrets.ALIYUN_APP_KEY }}
+          ALIYUN_TTS_VOICE: ruoxi
         run: |
-          echo "=== 步骤1: 获取 Token ==="
-          TOKEN=$(python3 -c "
-import os, sys, json, time, hmac, hashlib, base64, urllib.parse, urllib.request
-ak_id = os.environ['ALIYUN_ACCESS_KEY_ID']
-ak_secret = os.environ['ALIYUN_ACCESS_KEY_SECRET']
-def pe(s):
-    s = urllib.parse.quote(str(s), safe='')
-    for a, b in (('!', '%21'), (\"'\", '%27'), ('(', '%28'), (')', '%29'), ('*', '%2A')):
-        s = s.replace(a, b)
-    return s
-params = {'AccessKeyId': ak_id, 'Action': 'CreateToken', 'Format': 'JSON', 'SignatureMethod': 'HMAC-SHA1', 'SignatureNonce': str(int(time.time()*1000)), 'SignatureVersion': '1.0', 'Timestamp': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()), 'Version': '2019-02-28'}
-keys = sorted(params.keys())
-canonical_qs = '&'.join(f'{pe(k)}={pe(params[k])}' for k in keys)
-sig = base64.b64encode(hmac.new((ak_secret+'&').encode(), f'GET&{pe(\"/\")}&{pe(canonical_qs)}'.encode(), hashlib.sha1).digest()).decode()
-params['Signature'] = sig
-url = 'https://nls-meta.cn-shanghai.aliyuncs.com/?' + urllib.parse.urlencode(params, safe='')
-with urllib.request.urlopen(url, timeout=15) as r:
-    data = json.loads(r.read().decode('utf-8'))
-print(data['Token']['Id'])
-")
-          echo "Token 获取成功: ${TOKEN:0:8}..."
-          
-          echo "=== 步骤2: 注入 Token 到 tts.js ==="
-          python3 -c "
-import sys
-token = sys.argv[1]
-with open('js/tts.js', 'r') as f:
-    c = f.read()
-c = c.replace('__token: null', \"__token: '\" + token + \"'\", 1)
-with open('js/tts.js', 'w') as f:
-    f.write(c)
-print('Done')
-" "$TOKEN"
-          
-          echo "=== 步骤3: 验证注入结果 ==="
+          echo "=== 修改前 ==="
+          grep -o '__token: .*' js/tts.js || echo 'NOT FOUND'
+          echo "=== 执行 gen_token.py ==="
+          python3 build/gen_token.py
+          echo "=== 修改后 ==="
           grep -o '__token: .*' js/tts.js
+
+      - name: 确认文件存在
+        run: |
+          echo "=== 文件清单 ==="
+          ls -la js/tts.js
+          wc -c js/tts.js
+          echo "=== hash ==="
+          md5sum js/tts.js
 
       - name: 上传 Pages 产物
         uses: actions/upload-pages-artifact@v3
