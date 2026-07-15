@@ -81,7 +81,7 @@ const ExamRoomPage = {
           <div class="question-header">
             <span class="question-type-badge">${Utils.typeLabel(q.type)}</span>
             <span class="question-number">第 ${this.currentIndex + 1} 题</span>
-            <span class="question-pool-id">题库#${q.id}</span>
+            <span class="question-pool-id">${this.exam.name} · 题库#${q.id}</span>
           </div>
           <div class="question-content">${Utils.escapeHtml(q.content)}</div>
 
