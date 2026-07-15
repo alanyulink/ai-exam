@@ -1,10 +1,10 @@
-// 语音合成服务
-// 方案一：本地代理服务器（bash start.sh 时可用）
-// 方案二：浏览器直连阿里云 TTS
-// 方案三：回退 Web Speech API
 const TTS = {
   _audio: null,
   _isPlaying: false,
+  _ws: null,
+  _audioBuffer: null,
+  _audioContext: null,
+  _sourceNode: null,
 
   _cfg: (() => {
     const d = s => atob(s);
@@ -61,6 +61,96 @@ const TTS = {
     return data.Token.Id;
   },
 
+  _generateId() {
+    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  },
+
+  async _speakWebSocket(text) {
+    const cfg = this._cfg;
+    const token = await this._getAliyunToken();
+    const taskId = this._generateId();
+    const messageId = this._generateId();
+
+    return new Promise((resolve, reject) => {
+      const url = 'wss://nls-gateway-cn-shanghai.aliyuncs.com/ws/v1';
+      const ws = new WebSocket(url);
+      ws.binaryType = 'arraybuffer';
+      this._ws = ws;
+
+      let audioChunks = [];
+      let receivedAudio = false;
+
+      ws.onopen = () => {
+        ws.send(JSON.stringify({
+          header: {
+            message_id: messageId,
+            task_id: taskId,
+            namespace: 'FlowingSpeechSynthesizer',
+            name: 'StartSynthesis',
+            appkey: cfg.appKey
+          },
+          payload: {
+            voice: cfg.voice,
+            format: 'mp3',
+            sample_rate: 24000,
+            volume: 50,
+            speech_rate: 0,
+            pitch_rate: 0
+          }
+        }));
+      };
+
+      ws.onmessage = (event) => {
+        if (typeof event.data === 'string') {
+          const msg = JSON.parse(event.data);
+          const name = msg.header?.name;
+          if (name === 'SynthesisStarted') {
+            ws.send(JSON.stringify({
+              header: {
+                message_id: this._generateId(),
+                task_id: taskId,
+                namespace: 'FlowingSpeechSynthesizer',
+                name: 'RunSynthesis',
+                appkey: cfg.appKey
+              },
+              payload: { text: text }
+            }));
+          } else if (name === 'SynthesisCompleted') {
+            ws.close();
+          } else if (msg.header?.status && msg.header.status !== 20000000) {
+            ws.close();
+            reject(new Error('TTS error: ' + msg.header.status_message));
+          }
+        } else if (event.data instanceof ArrayBuffer) {
+          receivedAudio = true;
+          audioChunks.push(new Uint8Array(event.data));
+        }
+      };
+
+      ws.onclose = () => {
+        this._ws = null;
+        if (receivedAudio && audioChunks.length > 0) {
+          const totalLength = audioChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+          const merged = new Uint8Array(totalLength);
+          let offset = 0;
+          for (const chunk of audioChunks) {
+            merged.set(chunk, offset);
+            offset += chunk.length;
+          }
+          const blob = new Blob([merged], { type: 'audio/mp3' });
+          resolve(blob);
+        } else {
+          reject(new Error('No audio received'));
+        }
+      };
+
+      ws.onerror = () => {
+        this._ws = null;
+        reject(new Error('WebSocket error'));
+      };
+    });
+  },
+
   async _speakAliyun(text) {
     const cfg = this._cfg;
     const token = await this._getAliyunToken();
@@ -109,12 +199,16 @@ const TTS = {
 
   stop() {
     if (this._audio) { this._audio.pause(); this._audio = null; }
+    if (this._ws) { this._ws.close(); this._ws = null; }
+    if (this._sourceNode) { this._sourceNode.stop(); this._sourceNode = null; }
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     this._isPlaying = false;
+    this._audioBuffer = null;
   },
 
   isPlaying() {
     if (this._audio && !this._audio.paused) return true;
+    if (this._ws) return true;
     if (window.speechSynthesis && window.speechSynthesis.speaking) return true;
     return false;
   },
@@ -124,7 +218,6 @@ const TTS = {
     this.stop();
     this._isPlaying = true;
 
-    // 方案1: 本地代理
     try {
       const resp = await fetch('/api/tts?text=' + encodeURIComponent(text));
       if (resp.ok) {
@@ -132,12 +225,17 @@ const TTS = {
         return this._playBlob(blob);
       }
     } catch (e) {}
-    // 方案2: 阿里云直连
+
+    try {
+      const blob = await this._speakWebSocket(text);
+      return this._playBlob(blob);
+    } catch (e) {}
+
     try {
       const blob = await this._speakAliyun(text);
       return this._playBlob(blob);
     } catch (e) {}
-    // 方案3: 浏览器语音
+
     await this._speakWebSpeech(text);
     this._isPlaying = false;
   },
@@ -179,7 +277,6 @@ const TTS = {
   }
 };
 
-// 预加载语音
 if (window.speechSynthesis) {
   window.speechSynthesis.getVoices();
   window.speechSynthesis.onvoiceschanged = () => {};
