@@ -2,6 +2,7 @@ const TTS = {
   _audio: null,
   _isPlaying: false,
   _ws: null,
+  __token: null,
 
   _cfg: (() => {
     const d = s => atob(s);
@@ -12,13 +13,6 @@ const TTS = {
       voice: 'ruoxi',
     };
   })(),
-
-  _getToken() {
-    if (typeof ALIYUN_TTS_TOKEN !== 'undefined') {
-      return { token: ALIYUN_TTS_TOKEN, appKey: ALIYUN_TTS_APPKEY, voice: ALIYUN_TTS_VOICE };
-    }
-    return null;
-  },
 
   async _hmacSha1(message, secret) {
     const encoder = new TextEncoder();
@@ -69,10 +63,11 @@ const TTS = {
     return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   },
 
-  async _speakWebSocket(text, embeddedToken, appKey, voice) {
-    const token = embeddedToken || await this._getAliyunToken();
-    const ak = appKey || this._cfg.appKey;
-    const vc = voice || this._cfg.voice;
+  async _speakWebSocket(text) {
+    const cfg = this._cfg;
+    const token = this.__token || await this._getAliyunToken();
+    const ak = cfg.appKey;
+    const vc = cfg.voice;
     const taskId = this._generateId();
     const messageId = this._generateId();
 
@@ -205,22 +200,13 @@ const TTS = {
       }
     } catch (e) {}
 
-    // 方案2: WebSocket（构建时嵌入 Token 或在线获取）
-    try {
-      const embedded = this._getToken();
-      if (embedded) {
-        const blob = await this._speakWebSocket(text, embedded.token, embedded.appKey, embedded.voice);
-        return this._playBlob(blob);
-      }
-    } catch (e) {}
-
-    // 方案3: 在线获取 Token + WebSocket
+    // 方案2: WebSocket（优先用构建时注入的 Token，否则在线获取）
     try {
       const blob = await this._speakWebSocket(text);
       return this._playBlob(blob);
     } catch (e) {}
 
-    // 方案4: 浏览器语音
+    // 方案3: 浏览器语音
     await this._speakWebSpeech(text);
     this._isPlaying = false;
   },

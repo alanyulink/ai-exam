@@ -16,6 +16,3 @@ start.sh
 
 # 本地语音配置
 js/config.js
-
-# 构建时生成的 Token（仅在 GitHub Actions 中生成）
-js/token.js
