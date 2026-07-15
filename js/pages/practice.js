@@ -196,6 +196,9 @@ const PracticePage = {
     const userAnswer = this.answered[this.currentIndex] || '';
     const isCorrect = userAnswer === q.answer;
 
+    if (isCorrect) Utils.playCorrect();
+    else Utils.playWrong();
+
     const stats = Store.getStats();
     const today = new Date().toDateString();
 

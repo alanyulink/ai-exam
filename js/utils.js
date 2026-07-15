@@ -64,5 +64,48 @@ const Utils = {
   // 导航
   navigate(path) {
     window.location.hash = path;
+  },
+
+  // ==================== 音效合成 (Web Audio API) ====================
+  _audioCtx: null,
+  _getAudioCtx() {
+    if (!this._audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      this._audioCtx = new AC();
+    }
+    if (this._audioCtx.state === 'suspended') {
+      this._audioCtx.resume();
+    }
+    return this._audioCtx;
+  },
+
+  // 播放单个音调
+  _playTone(freq, startAt, duration, type = 'sine', volume = 0.3) {
+    const ctx = this._getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime + startAt);
+    gain.gain.setValueAtTime(0, ctx.currentTime + startAt);
+    gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + startAt + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startAt + duration);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(ctx.currentTime + startAt);
+    osc.stop(ctx.currentTime + startAt + duration);
+  },
+
+  // 答对音效：上行三和弦 (C5 - E5 - G5)
+  playCorrect() {
+    try {
+      [523.25, 659.25, 783.99].forEach((f, i) => this._playTone(f, i * 0.1, 0.25, 'sine', 0.25));
+    } catch (e) {}
+  },
+
+  // 答错音效：下行二音 (E4 - C4)
+  playWrong() {
+    try {
+      this._playTone(329.63, 0, 0.18, 'square', 0.2);
+      this._playTone(261.63, 0.18, 0.3, 'square', 0.2);
+    } catch (e) {}
   }
 };

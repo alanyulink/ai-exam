@@ -257,6 +257,8 @@ const ExamRoomPage = {
     });
 
     // 返回试卷列表
+    if (passed) Utils.playCorrect();
+    else Utils.playWrong();
     Utils.navigate('exam');
   },
 
