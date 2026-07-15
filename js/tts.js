@@ -63,7 +63,7 @@ const TTS = {
     return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   },
 
-  async _speakWebSocket(text) {
+  async _speakWebSocket(text, isRetry) {
     const cfg = this._cfg;
     const token = this.__token || await this._getAliyunToken();
     const ak = cfg.appKey;
@@ -149,6 +149,13 @@ const TTS = {
         self._ws = null;
         reject(new Error('WebSocket error'));
       };
+    }).catch(async (err) => {
+      this._ws = null;
+      if (!isRetry && this.__token) {
+        this.__token = null;
+        return this._speakWebSocket(text, true);
+      }
+      throw err;
     });
   },
 
