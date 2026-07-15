@@ -84,7 +84,6 @@ const PracticePage = {
             <span class="fav-btn ${Store.isFavorite(q.id) ? 'faved' : ''}" onclick="PracticePage.toggleFav(${q.id})">
               ${Store.isFavorite(q.id) ? '★' : '☆'}
             </span>
-            <span class="tts-btn ${TTS._isPlaying ? 'playing' : ''}" onclick="PracticePage.toggleSpeak()" title="朗读/停止题目">🔊</span>
           </div>
           <div class="question-content">${Utils.escapeHtml(q.content)}</div>
 
@@ -131,7 +130,7 @@ const PracticePage = {
             ${isCorrect ? '✅ 回答正确！' : '❌ 回答错误'}
             <span class="explanation-answer">正确答案：${q.answer}</span>
           </div>
-          ${!q.explanationHidden ? `<div class="explanation-body">${Utils.renderText(q.explanation)}</div>` : ''}
+          ${q.explanation ? `<div class="explanation-body">${Utils.renderText(q.explanation)}</div>` : ''}
         </div>
         ` : ''}
       </div>
@@ -146,28 +145,6 @@ const PracticePage = {
   toggleFav(questionId) {
     Store.toggleFavorite(questionId);
     this.renderCurrent();
-  },
-
-  toggleSpeak() {
-    if (TTS.isPlaying()) {
-      TTS.stop();
-      this.updateTtsButton(false);
-    } else {
-      const questions = this.getQuestions();
-      const q = questions[this.currentIndex];
-      if (!q) return;
-      this.updateTtsButton(true);
-      TTS.speakQuestion(q).finally(() => {
-        this.updateTtsButton(false);
-      });
-    }
-  },
-
-  updateTtsButton(playing) {
-    const btn = document.querySelector('.tts-btn');
-    if (btn) {
-      btn.classList.toggle('playing', playing);
-    }
   },
 
   selectOption(optIndex) {
@@ -237,12 +214,9 @@ const PracticePage = {
     }
 
     this.renderCurrent();
-
-    TTS.speakFeedback(isCorrect, q.type, q.answer, q.options);
   },
 
   goTo(index) {
-    TTS.stop();
     const questions = this.getQuestions();
     if (index < 0 || index >= questions.length) return;
     this.currentIndex = index;
@@ -251,17 +225,5 @@ const PracticePage = {
 
   renderCurrent() {
     document.getElementById('app').innerHTML = this.renderPage();
-    setTimeout(() => this.autoPlayCurrent(), 100);
   },
-
-  autoPlayCurrent() {
-    if (TTS.isPlaying()) return;
-    const questions = this.getQuestions();
-    const q = questions[this.currentIndex];
-    if (!q) return;
-    this.updateTtsButton(true);
-    TTS.speakQuestion(q).finally(() => {
-      this.updateTtsButton(false);
-    });
-  }
 };

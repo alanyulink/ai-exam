@@ -582,41 +582,6 @@ body {
   color: #f59e0b;
 }
 
-.tts-btn {
-  font-size: 20px;
-  cursor: pointer;
-  min-width: 44px;
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  user-select: none;
-  transition: all 0.15s;
-}
-
-.tts-btn.playing {
-  color: var(--primary);
-  animation: tts-pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes tts-pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.15); opacity: 0.7; }
-}
-
-.tts-btn:active {
-  transform: scale(0.85);
-  background: rgba(37, 99, 235, 0.1);
-}
-
-.tts-btn-explanation {
-  font-size: 16px;
-  min-width: 36px;
-  min-height: 36px;
-  margin-left: auto;
-}
-
 .question-type-badge {
   font-size: 12px;
   font-weight: 600;

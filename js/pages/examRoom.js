@@ -222,8 +222,7 @@ const ExamRoomPage = {
           options: q.options,
           userAnswer: userAnswer,
           correctAnswer: q.answer,
-          explanation: q.explanation,
-          explanationHidden: q.explanationHidden
+          explanation: q.explanation
         });
       }
     });

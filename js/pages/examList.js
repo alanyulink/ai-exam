@@ -132,7 +132,7 @@ const ExamListPage = {
               <span>你的答案：${w.userAnswer || '未作答'}</span>
               <span>正确答案：${w.correctAnswer}</span>
             </div>
-            ${w.explanation && !w.explanationHidden ? `
+            ${w.explanation ? `
               <div class="explanation-panel correct">
                 <div class="explanation-header">📖 知识讲解</div>
                 <div class="explanation-body">${Utils.renderText(w.explanation)}</div>
