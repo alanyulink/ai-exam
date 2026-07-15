@@ -22,25 +22,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 获取阿里云 TTS Token 并注入
+      - name: 复制项目文件到 _site
+        run: |
+          mkdir -p _site
+          tar --exclude='.git' --exclude='_site' --exclude='.trae' --exclude='build' --exclude='server.py' --exclude='start.sh' -cf - . | tar -xf - -C _site/
+          echo "=== _site 文件清单 ==="
+          ls -la _site/js/
+
+      - name: 获取 Token 并注入到 _site/js/tts.js
         env:
           ALIYUN_ACCESS_KEY_ID: ${{ secrets.ALIYUN_ACCESS_KEY_ID }}
           ALIYUN_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_ACCESS_KEY_SECRET }}
           ALIYUN_APP_KEY: ${{ secrets.ALIYUN_APP_KEY }}
-        run: python3 build/gen_token.py
-
-      - name: 验证注入
         run: |
-          grep -o '__token: [^,]*' js/tts.js
-          echo "file ok"
-
-      - name: 创建构建标记
-        run: echo "BUILD_TIME=$(date -u +%s)" > js/build_info.js
+          python3 build/gen_token.py --output-dir _site
+          echo "=== 验证 ==="
+          grep -o '__token: .*' _site/js/tts.js
 
       - name: 上传 Pages 产物
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
 
       - name: 部署到 GitHub Pages
         id: deployment

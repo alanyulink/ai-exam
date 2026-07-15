@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
-"""构建时生成阿里云 TTS Token，直接注入 js/tts.js"""
+"""构建时生成阿里云 TTS Token，注入到指定目录的 js/tts.js"""
 
 import os, sys, json, time, hmac, hashlib, base64, urllib.parse, urllib.request, re
+
+output_dir = '.'
+if '--output-dir' in sys.argv:
+    idx = sys.argv.index('--output-dir')
+    if idx + 1 < len(sys.argv):
+        output_dir = sys.argv[idx + 1]
 
 access_key_id = os.environ.get('ALIYUN_ACCESS_KEY_ID')
 access_key_secret = os.environ.get('ALIYUN_ACCESS_KEY_SECRET')
@@ -50,8 +56,8 @@ with urllib.request.urlopen(req, timeout=15) as resp:
 token = data['Token']['Id']
 expire_seconds = int(data['Token'].get('ExpireTime', 3600))
 
-# 直接修改 js/tts.js，将 __token: null 替换为 __token: '实际Token'
-tts_path = 'js/tts.js'
+# 注入到指定目录的 js/tts.js
+tts_path = os.path.join(output_dir, 'js', 'tts.js')
 with open(tts_path, 'r') as f:
     content = f.read()
 
