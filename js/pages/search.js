@@ -2,13 +2,19 @@
 const SearchPage = {
   keyword: '',
   results: [],
-  expandedId: null,
+  selectedId: null,
+  _isComposing: false,
 
   render() {
+    setTimeout(() => this.bindInputEvents(), 0);
     return this.renderPage();
   },
 
   renderPage() {
+    const selectedQ = this.selectedId
+      ? QUESTION_DATA.questions.find(q => q.id === this.selectedId)
+      : null;
+
     return `
       <div class="page search-page">
         <div class="search-header">
@@ -21,9 +27,7 @@ const SearchPage = {
             class="search-input" 
             id="search-input"
             placeholder="输入关键词搜索题目..." 
-            value="${Utils.escapeHtml(this.keyword)}"
-            oninput="SearchPage.onInput(event)"
-            onkeydown="SearchPage.onKeyDown(event)">
+            value="${Utils.escapeHtml(this.keyword)}">
           <button class="search-clear-btn" id="search-clear" onclick="SearchPage.clearKeyword()" style="${this.keyword ? '' : 'display:none'}">✕</button>
         </div>
 
@@ -32,81 +36,120 @@ const SearchPage = {
         </div>
 
         <div class="search-results">
-          ${this.results.length > 0 ? this.results.map(q => this.renderQuestionCard(q)).join('') : (this.keyword ? '<div class="empty-state">没有找到相关题目</div>' : '')}
+          ${this.results.length > 0 ? this.results.map(q => this.renderResultItem(q)).join('') : (this.keyword ? '<div class="empty-state">没有找到相关题目</div>' : '')}
         </div>
+
+        ${selectedQ ? this.renderDetailModal(selectedQ) : ''}
       </div>
     `;
   },
 
-  renderQuestionCard(q) {
-    const isExpanded = this.expandedId === q.id;
+  renderResultItem(q) {
     return `
-      <div class="question-card search-result-card">
-        <div class="question-header" onclick="SearchPage.toggleExpand(${q.id})">
-          <span class="question-type-badge">${Utils.typeLabel(q.type)}</span>
-          <span class="question-number">第 ${q.id} 题</span>
+      <div class="search-result-item" onclick="SearchPage.openDetail(${q.id})">
+        <div class="search-result-left">
+          <span class="search-result-type">${Utils.typeLabel(q.type)}</span>
+          <span class="search-result-id">第${q.id}题</span>
+        </div>
+        <div class="search-result-content">${Utils.escapeHtml(q.content)}</div>
+        <span class="search-result-arrow">›</span>
+      </div>
+    `;
+  },
+
+  renderDetailModal(q) {
+    return `
+      <div class="search-mask" onclick="SearchPage.closeDetail()"></div>
+      <div class="search-detail-modal" id="search-detail-modal">
+        <div class="detail-modal-header">
+          <span class="detail-modal-type">${Utils.typeLabel(q.type)}</span>
+          <span class="detail-modal-id">第${q.id}题</span>
           <span class="fav-btn ${Store.isFavorite(q.id) ? 'faved' : ''}" onclick="event.stopPropagation(); SearchPage.toggleFav(${q.id})">
             ${Store.isFavorite(q.id) ? '★' : '☆'}
           </span>
+          <button class="detail-close-btn" onclick="SearchPage.closeDetail()">✕</button>
         </div>
-        <div class="question-content">${Utils.escapeHtml(q.content)}</div>
+        <div class="detail-modal-body">
+          <div class="detail-question">${Utils.escapeHtml(q.content)}</div>
 
-        <div class="options-list ${q.type === 'multi' ? 'multi-select' : ''}">
-          ${q.options.map((opt, idx) => {
-            const isCorrect = q.answer.includes(opt.label);
-            let optClass = 'option-item';
-            if (isExpanded && isCorrect) {
-              optClass += ' correct';
-            }
-            return `
-              <div class="${optClass}">
-                <span class="option-marker">${opt.label}</span>
-                <span class="option-text">${Utils.escapeHtml(opt.content)}</span>
-                ${isExpanded && isCorrect ? '<span class="option-check">✓</span>' : ''}
-              </div>
-            `;
-          }).join('')}
-        </div>
-
-        ${isExpanded ? `
-        <div class="explanation-panel correct">
-          <div class="explanation-header">
-            <span class="explanation-answer">正确答案：${q.answer}</span>
+          <div class="options-list ${q.type === 'multi' ? 'multi-select' : ''}">
+            ${q.options.map((opt, idx) => {
+              const isCorrect = q.answer.includes(opt.label);
+              return `
+                <div class="option-item ${isCorrect ? 'correct' : ''}">
+                  <span class="option-marker">${opt.label}</span>
+                  <span class="option-text">${Utils.escapeHtml(opt.content)}</span>
+                  ${isCorrect ? '<span class="option-check">✓</span>' : ''}
+                </div>
+              `;
+            }).join('')}
           </div>
-          ${q.explanation ? `<div class="explanation-body">${Utils.renderText(q.explanation)}</div>` : ''}
+
+          <div class="explanation-panel correct">
+            <div class="explanation-header">
+              <span class="explanation-answer">正确答案：${q.answer}</span>
+            </div>
+            ${q.explanation ? `<div class="explanation-body">${Utils.renderText(q.explanation)}</div>` : ''}
+          </div>
         </div>
-        ` : `
-        <div class="expand-hint" onclick="SearchPage.toggleExpand(${q.id})">
-          点击查看答案和解析 ▼
-        </div>
-        `}
       </div>
     `;
   },
 
-  onInput(event) {
-    this.keyword = event.target.value;
-    this.doSearch();
-    this.renderCurrent();
+  bindInputEvents() {
+    const input = document.getElementById('search-input');
+    if (!input) return;
+
+    input.addEventListener('compositionstart', () => {
+      this._isComposing = true;
+    });
+
+    input.addEventListener('compositionend', (e) => {
+      this._isComposing = false;
+      this.keyword = e.target.value;
+      this.doSearch();
+      this.updateResultsOnly();
+    });
+
+    input.addEventListener('input', (e) => {
+      if (this._isComposing) return;
+      this.keyword = e.target.value;
+      this.doSearch();
+      this.updateResultsOnly();
+    });
+
+    input.focus();
+    const len = input.value.length;
+    input.setSelectionRange(len, len);
   },
 
-  onKeyDown(event) {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      this.doSearch();
-      this.renderCurrent();
+  updateResultsOnly() {
+    const infoEl = document.querySelector('.search-info');
+    const resultsEl = document.querySelector('.search-results');
+    const clearBtn = document.getElementById('search-clear');
+
+    if (infoEl) {
+      infoEl.innerHTML = this.keyword
+        ? `找到 <strong>${this.results.length}</strong> 道相关题目`
+        : '输入关键词开始搜索';
+    }
+
+    if (resultsEl) {
+      resultsEl.innerHTML = this.results.length > 0
+        ? this.results.map(q => this.renderResultItem(q)).join('')
+        : (this.keyword ? '<div class="empty-state">没有找到相关题目</div>' : '');
+    }
+
+    if (clearBtn) {
+      clearBtn.style.display = this.keyword ? '' : 'none';
     }
   },
 
   clearKeyword() {
     this.keyword = '';
     this.results = [];
-    this.expandedId = null;
+    this.selectedId = null;
     this.renderCurrent();
-    setTimeout(() => {
-      const input = document.getElementById('search-input');
-      if (input) input.focus();
-    }, 0);
   },
 
   doSearch() {
@@ -118,37 +161,42 @@ const SearchPage = {
 
     this.results = QUESTION_DATA.questions.filter(q => {
       const content = q.content.toLowerCase();
-      if (content.includes(kw)) return true;
-
-      if (q.options && q.options.some(opt => opt.content.toLowerCase().includes(kw))) {
-        return true;
-      }
-
-      if (q.explanation && q.explanation.toLowerCase().includes(kw)) {
-        return true;
-      }
-
-      return false;
-    }).slice(0, 100);
+      return content.includes(kw);
+    }).slice(0, 200);
   },
 
-  toggleExpand(id) {
-    this.expandedId = this.expandedId === id ? null : id;
+  openDetail(id) {
+    this.selectedId = id;
     this.renderCurrent();
+    setTimeout(() => {
+      const modal = document.getElementById('search-detail-modal');
+      if (modal) {
+        modal.classList.add('show');
+      }
+    }, 10);
+  },
+
+  closeDetail() {
+    const modal = document.getElementById('search-detail-modal');
+    if (modal) {
+      modal.classList.remove('show');
+    }
+    setTimeout(() => {
+      this.selectedId = null;
+      this.renderCurrent();
+    }, 250);
   },
 
   toggleFav(questionId) {
     Store.toggleFavorite(questionId);
-    this.renderCurrent();
+    const q = QUESTION_DATA.questions.find(qx => qx.id === questionId);
+    if (q) {
+      this.openDetail(questionId);
+    }
   },
 
   renderCurrent() {
     document.getElementById('app').innerHTML = this.renderPage();
-    const input = document.getElementById('search-input');
-    if (input && document.activeElement !== input) {
-      input.focus();
-      const len = input.value.length;
-      input.setSelectionRange(len, len);
-    }
+    this.bindInputEvents();
   }
 };
