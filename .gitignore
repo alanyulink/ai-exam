@@ -1,0 +1,18 @@
+# 系统
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+src/data/questions.json
+
+# TRAE
+.trae/
+
+# 本地环境变量
+start.sh
+
+# 本地语音配置
+js/config.js
