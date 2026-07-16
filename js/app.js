@@ -19,6 +19,8 @@ const App = {
 
     if (path === '/' || path === '' || path === 'home') {
       app.innerHTML = HomePage.render();
+    } else if (parts[0] === 'search') {
+      app.innerHTML = SearchPage.render();
     } else if (parts[0] === 'practice') {
       const type = parts[1] || 'single';
       app.innerHTML = PracticePage.render(type);

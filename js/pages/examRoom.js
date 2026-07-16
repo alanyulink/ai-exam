@@ -279,8 +279,10 @@ const ExamRoomPage = {
 
     // 更新统计
     Store.updateStats({
-      totalAnswered: correct,
+      totalAnswered: questions.length,
       totalCorrect: correct,
+      todayAnswered: questions.length,
+      todayCorrect: correct,
       totalExams: 1,
       passedExams: passed ? 1 : 0
     });
