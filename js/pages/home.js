@@ -48,6 +48,11 @@ const HomePage = {
             <span class="action-title">刷题模式</span>
             <span class="action-desc">按题型分类练习，逐题作答</span>
           </button>
+          <button class="action-btn action-btn-search" onclick="Utils.navigate('search')">
+            <span class="action-icon">🔍</span>
+            <span class="action-title">搜题模式</span>
+            <span class="action-desc">输入关键词，快速查找题目</span>
+          </button>
           <button class="action-btn action-btn-exam" onclick="Utils.navigate('exam')">
             <span class="action-icon">📋</span>
             <span class="action-title">模拟考试</span>

@@ -199,19 +199,13 @@ const PracticePage = {
     if (isCorrect) Utils.playCorrect();
     else Utils.playWrong();
 
-    const stats = Store.getStats();
-    const today = new Date().toDateString();
-
-    const updates = {
+    Store.updateStats({
       totalAnswered: 1,
-      totalCorrect: isCorrect ? 1 : 0
-    };
-    if (stats.lastStudyDate === today || !stats.lastStudyDate) {
-      updates.todayAnswered = 1;
-      updates.todayCorrect = isCorrect ? 1 : 0;
-    }
+      totalCorrect: isCorrect ? 1 : 0,
+      todayAnswered: 1,
+      todayCorrect: isCorrect ? 1 : 0
+    });
 
-    Store.updateStats(updates);
     if (!isCorrect && q.id) {
       Store.addWrongQuestion(q.id, userAnswer, false);
     }
