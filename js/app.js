@@ -3,6 +3,10 @@ const App = {
   init() {
     window.addEventListener('hashchange', () => this.route());
     this.route();
+    // 首次点击/触摸时解锁 AudioContext（iOS Safari 必需）
+    const unlock = () => Utils._initAudio();
+    document.addEventListener('click', unlock, { once: true });
+    document.addEventListener('touchstart', unlock, { once: true });
   },
 
   route() {
