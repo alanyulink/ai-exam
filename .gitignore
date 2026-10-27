@@ -6,10 +6,10 @@ Thumbs.db
 __pycache__/
 *.pyc
 *.pyo
-src/data/questions.json
 
-# TRAE
-.trae/
+# TRAE（仅保留产品/技术文档）
+.trae/*
+!.trae/documents/
 
 # 本地环境变量
 start.sh

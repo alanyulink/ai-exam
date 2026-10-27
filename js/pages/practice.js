@@ -5,6 +5,87 @@ const PracticePage = {
   answered: {},
   confirmed: {},
   gridExpanded: false,
+  _importantIds: null,
+
+  // 归一化文本：去空格、统一标点、去除（修正）后缀
+  _normalizeText(text) {
+    return text
+      .trim()
+      .replace(/\s+/g, '')                         // 去除所有空白
+      .replace(/[，,]/g, ',')                       // 统一逗号
+      .replace(/[。.]/g, '.')                      // 统一句号
+      .replace(/[？?]/g, '?')                      // 统一问号
+      .replace(/[（(]/g, '(')
+      .replace(/[）)]/g, ')')
+      .replace(/[、]/g, ',')
+      .replace(/[「」『』]/g, '')                   // 去除中文引号
+      .replace(/\(修正\)/g, '')                    // 去除（修正）标注
+      .toLowerCase();
+  },
+
+  // 计算两字符串的字符三元组 Jaccard 相似度
+  _similarity(s1, s2) {
+    const getTrigrams = (s) => {
+      const set = new Set();
+      for (let i = 0; i < s.length - 2; i++) {
+        set.add(s.substring(i, i + 3));
+      }
+      return set;
+    };
+    const t1 = getTrigrams(s1);
+    const t2 = getTrigrams(s2);
+    let inter = 0;
+    for (const t of t1) {
+      if (t2.has(t)) inter++;
+    }
+    const union = t1.size + t2.size - inter;
+    return union === 0 ? 0 : inter / union;
+  },
+
+  // 获取试卷6中的题目池ID集合（重点题目）
+  getImportantQuestionIds() {
+    if (this._importantIds) return this._importantIds;
+    const exam6 = QUESTION_DATA.exams.find(e => e.id === 6);
+    if (!exam6) return new Set();
+
+    // 构建归一化文本 → poolId 映射（每个归一化文本只保留第一个）
+    const poolMap = {};
+    const poolList = [];
+    for (const pq of QUESTION_DATA.questions) {
+      const norm = this._normalizeText(pq.content);
+      if (!poolMap[norm]) {
+        poolMap[norm] = pq.id;
+      }
+      poolList.push({ id: pq.id, norm });
+    }
+
+    const ids = new Set();
+    for (const eq of exam6.questions) {
+      const norm = this._normalizeText(eq.content);
+
+      // 1) 归一化精确匹配
+      if (poolMap[norm] !== undefined) {
+        ids.add(poolMap[norm]);
+        continue;
+      }
+
+      // 2) 模糊匹配（≥90% 相似度）
+      let bestId = null;
+      let bestScore = 0;
+      for (const p of poolList) {
+        const score = this._similarity(norm, p.norm);
+        if (score > bestScore) {
+          bestScore = score;
+          bestId = p.id;
+        }
+      }
+      if (bestScore >= 0.9 && bestId !== null) {
+        ids.add(bestId);
+      }
+    }
+    this._importantIds = ids;
+    return ids;
+  },
 
   getQuestions() {
     return QUESTION_DATA.questions.filter(q => q.type === this.currentType);
@@ -65,6 +146,7 @@ const PracticePage = {
             const isFav = Store.isFavorite(qx.id);
             const isAnswered = this.confirmed[i] === true;
             const isCurrent = i === this.currentIndex;
+            const isKey = PracticePage.getImportantQuestionIds().has(qx.id);
             let dotClass = 'grid-dot';
             if (isCurrent) dotClass += ' current';
             else if (isAnswered) {
@@ -72,6 +154,7 @@ const PracticePage = {
               dotClass += ansCorrect ? ' correct' : ' wrong';
             }
             if (isFav) dotClass += ' fav';
+            if (isKey && !isCurrent) dotClass += ' key';
             return `<span class="${dotClass}" onclick="PracticePage.goTo(${i})">${i + 1}</span>`;
           }).join('')}
         </div>
@@ -81,6 +164,7 @@ const PracticePage = {
           <div class="question-header">
             <span class="question-type-badge">${Utils.typeLabel(q.type)}</span>
             <span class="question-number">第 ${this.currentIndex + 1} 题</span>
+            ${this.getImportantQuestionIds().has(q.id) ? '<span class="key-icon">📌 重点</span>' : ''}
             <span class="fav-btn ${Store.isFavorite(q.id) ? 'faved' : ''}" onclick="PracticePage.toggleFav(${q.id})">
               ${Store.isFavorite(q.id) ? '★' : '☆'}
             </span>

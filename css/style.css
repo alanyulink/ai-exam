@@ -510,6 +510,13 @@ body {
   color: #f59e0b;
 }
 
+.grid-dot.key {
+  background: #fff1f2;
+  color: #e11d48;
+  border-color: #fda4af;
+  font-weight: 700;
+}
+
 /* ===== Progress Bar (deprecated for practice, keep for exam) ===== */
 .progress-bar-container {
   display: flex;
@@ -580,6 +587,19 @@ body {
 
 .fav-btn.faved {
   color: #f59e0b;
+}
+
+.key-icon {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e11d48;
+  background: #ffe4e6;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: auto;
+  white-space: nowrap;
+  user-select: none;
+  line-height: 1.4;
 }
 
 .question-type-badge {
