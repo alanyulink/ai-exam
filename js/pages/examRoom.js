@@ -244,6 +244,7 @@ const ExamRoomPage = {
       if (isCorrect) stats.correct++;
 
       if (!isCorrect) {
+        if (userAnswer) Store.addWrongQuestion(q.id, userAnswer, false);
         wrongDetails.push({
           index: i,
           type: q.type,

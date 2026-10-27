@@ -54,19 +54,20 @@ const Store = {
     return stats;
   },
 
-  // 错题本（废弃，保留兼容）
+  // 错题本
   getWrongQuestions() {
     return this.get('wrongQuestions', {});
   },
 
   addWrongQuestion(questionId, userAnswer, isCorrect) {
-    if (isCorrect) return;
+    if (isCorrect || !questionId) return;
     const wrong = this.getWrongQuestions();
     if (!wrong[questionId]) {
       wrong[questionId] = { questionId, wrongCount: 0, lastWrongTime: Date.now() };
     }
     wrong[questionId].wrongCount += 1;
     wrong[questionId].lastWrongTime = Date.now();
+    if (userAnswer !== undefined) wrong[questionId].lastAnswer = userAnswer;
     this.set('wrongQuestions', wrong);
   },
 

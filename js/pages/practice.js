@@ -98,7 +98,6 @@ const PracticePage = {
     this.confirmed = {};
     this.gridExpanded = false;
 
-    setTimeout(() => this.autoPlayCurrent(), 200);
     return this.renderPage();
   },
 

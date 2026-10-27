@@ -24,6 +24,8 @@ const App = {
     } else if (parts[0] === 'practice') {
       const type = parts[1] || 'single';
       app.innerHTML = PracticePage.render(type);
+    } else if (parts[0] === 'wrong') {
+      app.innerHTML = WrongBookPage.render();
     } else if (parts[0] === 'exam') {
       if (parts.length === 1) {
         app.innerHTML = ExamListPage.render();

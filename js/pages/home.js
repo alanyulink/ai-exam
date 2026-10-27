@@ -9,6 +9,8 @@ const HomePage = {
     const singleCount = QUESTION_DATA.questions.filter(q => q.type === 'single').length;
     const multiCount = QUESTION_DATA.questions.filter(q => q.type === 'multi').length;
     const judgeCount = QUESTION_DATA.questions.filter(q => q.type === 'judge').length;
+    const poolIds = new Set(QUESTION_DATA.questions.map(q => q.id));
+    const wrongCount = Object.keys(Store.getWrongQuestions()).filter(id => poolIds.has(Number(id))).length;
 
     return `
       <div class="page home-page">
@@ -53,10 +55,16 @@ const HomePage = {
             <span class="action-title">搜题模式</span>
             <span class="action-desc">输入关键词，快速查找题目</span>
           </button>
+          <button class="action-btn action-btn-wrong" onclick="Utils.navigate('wrong')">
+            <span class="action-icon">📕</span>
+            <span class="action-title">错题本</span>
+            <span class="action-desc">按题型聚合错题，可重做巩固</span>
+            ${wrongCount > 0 ? `<span class="action-badge">${wrongCount}</span>` : ''}
+          </button>
           <button class="action-btn action-btn-exam" onclick="Utils.navigate('exam')">
             <span class="action-icon">📋</span>
             <span class="action-title">模拟考试</span>
-            <span class="action-desc">5套模拟卷，限时60分钟</span>
+            <span class="action-desc">6套模拟卷，限时60分钟</span>
           </button>
         </div>
 
